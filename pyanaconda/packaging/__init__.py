@@ -982,22 +982,26 @@ class PackagePayload(Payload):
                 devspec = method.partition
                 needmount = True
                 # See if we used this method for stage2, thus dracut left it
-                if isodev and method.partition and method.partition in isodev \
-                and DRACUT_ISODIR in device:
+                if os.path.exists(DRACUT_ISODIR) and isodev and method.partition \
+                    and method.partition in isodev and DRACUT_REPODIR in device:
                     # Everything should be setup
                     url = "file://" + DRACUT_REPODIR
-                    needmount = False
-                    # We don't setup an install_device here
-                    # because we can't tear it down
+                    needmount = True
+                    isodevice = storage.devicetree.resolveDevice(devspec)
+                    if needmount:
+                        if not isodevice:
+                            raise PayloadSetupError("device for HDISO install %s does not exist" % devspec)
 
-            isodevice = storage.devicetree.resolveDevice(devspec)
-            if needmount:
-                if not isodevice:
-                    raise PayloadSetupError("device for HDISO install %s does not exist" % devspec)
-
-                self._setupMedia(isodevice)
-                url = "file://" + INSTALL_TREE
-                self.install_device = isodevice
+                    self._setupMedia(isodevice)
+                    url = "file://" + INSTALL_TREE
+                    self.install_device = isodevice
+                elif os.path.exists(DRACUT_REPODIR) and device and method.partition:
+                    # Everything should be setup
+                    url = "file://" + DRACUT_REPODIR
+                    needmount = True
+                    log.error("I am actually here with %s", device)
+                    realdevice = storage.devicetree.getDeviceByPath(device)
+                    self.install_device = realdevice
         elif method.method == "nfs":
             # There are several possible scenarios here:
             # 1. dracut could have mounted both the nfs repo and an iso and used
